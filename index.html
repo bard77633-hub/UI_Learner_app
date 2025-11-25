@@ -98,7 +98,7 @@
                 id: 'email',
                 title: 'メールマガジン登録',
                 description: '入力ミスの起きやすいメールアドレス入力欄のUI比較',
-                instruction: '以下のメールアドレスで登録してください。\n対象: taro.yamada@example.com'
+                instruction: '以下のメールアドレスで登録してください。\n対象: taro-yamada@example.com'
             },
             password: {
                 id: 'password',
@@ -157,7 +157,7 @@
 
             const handleEmailSubmit = () => {
                 if (!formData.email.includes('@')) { alert('システムエラー: 無効なフォーマット 0x0001'); onMistake(); return; }
-                if (formData.email !== 'taro.yamada@example.com') { alert('検証失敗: 入力値が期待されるレコードと一致しません。'); onMistake(); return; }
+                if (formData.email !== 'taro-yamada@example.com') { alert('検証失敗: 入力値が期待されるレコードと一致しません。'); onMistake(); return; }
                 if (formData.email !== formData.emailConfirm) { alert('エラー: 確認用メールアドレスが一致しません。'); onMistake(); return; }
                 onComplete();
             };
@@ -395,7 +395,7 @@
 
                 if (taskType === 'email') {
                     if (!email.includes('@')) { newErrors.email = '有効なメールアドレスを入力してください (@が含まれていません)'; isValid = false; }
-                    else if (email !== 'taro.yamada@example.com') { newErrors.email = '指示されたメールアドレスと一致しません。'; isValid = false; }
+                    else if (email !== 'taro-yamada@example.com') { newErrors.email = '指示されたメールアドレスと一致しません。'; isValid = false; }
                 }
                 if (taskType === 'password') {
                     if (password.length < 8) { newErrors.password = 'パスワードは8文字以上である必要があります。'; isValid = false; }
@@ -456,7 +456,7 @@
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                placeholder="taro.yamada@example.com"
+                                placeholder="taro-yamada@example.com"
                                 className={`w-full pl-10 pr-4 py-3 border rounded-lg outline-none transition-colors ${errors.email ? 'border-red-500 bg-red-50' : 'border-slate-300 focus:border-blue-500'}`}
                               />
                             </div>
