@@ -147,7 +147,7 @@
         // --- Component: BadForm ---
         const BadForm = ({ taskType, onComplete, onMistake }) => {
             const [formData, setFormData] = useState({
-                name: '', zip: '', addr: '', tel: '', email: '', emailConfirm: '', pass: '', passConfirm: ''
+                name: '', zip: '', addr: '', badPref: '', badCity: '', tel: '', email: '', emailConfirm: '', pass: '', passConfirm: ''
             });
             const [agreed, setAgreed] = useState(false);
 
@@ -184,9 +184,15 @@
             };
 
             const handleProfileSubmit = () => {
-                if (!formData.name || !formData.addr || !formData.tel) { alert('NULL値が検出されました。'); onMistake(); return; }
+                if (!formData.name || !formData.tel) { alert('NULL値が検出されました。'); onMistake(); return; }
                 if (formData.tel.includes('-')) { alert('形式エラー: DBカラムには数字のみ許可されています（ハイフン不可）。'); onMistake(); return; }
                 if (!formData.zip) { alert('郵便コード欠落'); onMistake(); return; }
+                
+                // Bad UI specific validation for annoying dropdowns
+                if (formData.badPref !== '13') { alert('地域コードエラー: 選択されたコードは無効です。'); onMistake(); return; }
+                if (formData.badCity !== '104') { alert('自治体IDエラー: 選択されたIDは無効です。'); onMistake(); return; }
+                if (!formData.addr) { alert('詳細住所が入力されていません。'); onMistake(); return; }
+
                 onComplete();
             };
 
@@ -197,7 +203,7 @@
             };
 
             const handleReset = () => {
-                setFormData({ name: '', zip: '', addr: '', tel: '', email: '', emailConfirm: '', pass: '', passConfirm: '' });
+                setFormData({ name: '', zip: '', addr: '', badPref: '', badCity: '', tel: '', email: '', emailConfirm: '', pass: '', passConfirm: '' });
                 setAgreed(false);
                 onMistake(); 
             };
@@ -295,13 +301,49 @@
                                     <input type="text" value={formData.name} onChange={(e) => handleChange('name', e.target.value)} className="border-b-2 border-black bg-gray-100 outline-none px-1" />
                                  </div>
 
-                                 <div className="flex flex-wrap gap-2 mb-4">
-                                    <div className="w-1/3">
-                                        <label className="text-[10px]">郵便地域コード:</label>
-                                        <input type="text" value={formData.zip} onChange={(e) => handleChange('zip', e.target.value)} className="w-full border border-black" />
+                                 <div className="mb-4">
+                                     <label className="text-[10px]">郵便地域コード:</label>
+                                     <input type="text" value={formData.zip} onChange={(e) => handleChange('zip', e.target.value)} className="w-full border border-black" />
+                                 </div>
+
+                                 {/* Annoying Address Selection for Bad UI */}
+                                 <div className="flex flex-wrap gap-2 mb-4 bg-gray-100 p-1 border border-dotted border-gray-500">
+                                    <div className="w-full">
+                                        <label className="text-[10px] block mb-1">JIS都道府県コード:</label>
+                                        <select 
+                                            value={formData.badPref} 
+                                            onChange={(e) => handleChange('badPref', e.target.value)} 
+                                            className="w-full border border-black text-xs h-8"
+                                        >
+                                            <option value="">-- 選択してください --</option>
+                                            <option value="01">01: HOKKAIDO</option>
+                                            <option value="02">02: AOMORI</option>
+                                            <option value="11">11: SAITAMA</option>
+                                            <option value="12">12: CHIBA</option>
+                                            <option value="13">13: TOKYO</option>
+                                            <option value="14">14: KANAGAWA</option>
+                                            <option value="27">27: OSAKA</option>
+                                            <option value="47">47: OKINAWA</option>
+                                        </select>
                                     </div>
                                     <div className="w-full">
-                                        <label className="text-[10px]">自治体・通り・建物:</label>
+                                        <label className="text-[10px] block mb-1">自治体ID (市区町村):</label>
+                                        <select 
+                                            value={formData.badCity} 
+                                            onChange={(e) => handleChange('badCity', e.target.value)} 
+                                            className="w-full border border-black text-xs h-8"
+                                        >
+                                            <option value="">-- IDを選択 --</option>
+                                            <option value="101">101: CHIYODA</option>
+                                            <option value="102">102: CHUO</option>
+                                            <option value="103">103: MINATO</option>
+                                            <option value="104">104: SHINJUKU</option>
+                                            <option value="105">105: BUNKYO</option>
+                                            <option value="201">201: HACHIOJI</option>
+                                        </select>
+                                    </div>
+                                    <div className="w-full">
+                                        <label className="text-[10px] block mb-1">残りの住所文字列:</label>
                                         <input type="text" value={formData.addr} onChange={(e) => handleChange('addr', e.target.value)} className="w-full border border-black" />
                                     </div>
                                  </div>
@@ -374,6 +416,20 @@
             const handleSubmit = (e) => {
                 e.preventDefault();
                 if (validate()) onComplete();
+            };
+
+            // Auto-fill logic for Good UI
+            const handleAddressSearch = () => {
+                // Remove hyphens for easier checking
+                const rawZip = zip.replace(/-/g, '');
+                if (rawZip === '1234567') {
+                    setPref('Tokyo'); // Matches the value in select
+                    setCity('新宿区');
+                    setErrors(prev => ({...prev, zip: ''})); // Clear zip errors
+                } else {
+                    alert('該当する住所が見つかりません。（テスト用郵便番号: 123-4567）');
+                    // In a real app, this would show inline, but alert is fine for demonstration here
+                }
             };
 
             return (
@@ -470,7 +526,13 @@
                                     <div className="flex gap-2 items-center">
                                         <Icons.MapPin size={18} className="text-slate-400"/>
                                         <input type="text" placeholder="123-4567" value={zip} onChange={e => setZip(e.target.value)} className="w-32 border border-slate-300 rounded-lg px-3 py-2 focus:border-blue-500 outline-none" />
-                                        <button type="button" className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded hover:bg-blue-100">住所検索</button>
+                                        <button 
+                                          type="button" 
+                                          onClick={handleAddressSearch}
+                                          className="text-xs bg-blue-50 text-blue-600 px-3 py-2 rounded-lg font-bold hover:bg-blue-100 border border-blue-200 transition-colors"
+                                        >
+                                          住所検索
+                                        </button>
                                     </div>
                                     {errors.zip && <p className="text-red-600 text-sm">{errors.zip}</p>}
                                     
