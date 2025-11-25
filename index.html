@@ -5,15 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bad UI vs Good UI - 情報Ⅰ学習教材</title>
     
-    <!-- Styles -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- React & Libraries -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- React & Libraries (CDN) -->
+    <!-- Note: Order is important -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
+    <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://unpkg.com/recharts/umd/Recharts.js"></script>
 
     <style>
         body { font-family: 'Inter', sans-serif; }
@@ -22,6 +26,12 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .blinking-text { animation: blink 1s linear infinite; }
         @keyframes blink { 50% { opacity: 0; } }
+        
+        /* Custom scrollbar for better UX in overlays */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
     </style>
 <script type="importmap">
 {
@@ -39,10 +49,19 @@
     <div id="root" class="h-full"></div>
 
     <script type="text/babel">
+        // Ensure libraries are available
         const { useState, useEffect, useRef } = React;
-        const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } = Recharts;
+        const RechartsObj = window.Recharts;
+        
+        if (!RechartsObj) {
+            console.error("Recharts failed to load");
+            document.getElementById('root').innerHTML = '<div class="p-4 text-red-600">Error: Library loading failed. Please check your internet connection.</div>';
+        }
 
-        // --- Icons (SVG Components to remove external dependency) ---
+        const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } = RechartsObj;
+
+        // --- Icons (SVG Components) ---
+        // Replacing lucide-react imports with direct SVG to avoid build steps
         const Icon = ({ d, size = 24, className = "" }) => (
             <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
                 <path d={d} />
@@ -51,13 +70,14 @@
         
         const Icons = {
             Mail: (p) => <Icon {...p} d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z M22 6l-10 7L2 6" />,
-            Lock: (p) => <Icon {...p} d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />, // Custom key/lock
+            Lock: (p) => <Icon {...p} d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />, 
             LockSimple: (p) => <Icon {...p} d="M19 11H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2zm-7-7a5 5 0 0 0-5 5v3h10V9a5 5 0 0 0-5-5z" />,
             User: (p) => <Icon {...p} d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8" />,
             Eye: (p) => <Icon {...p} d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z M12 5c-3.866 0-7 3.134-7 7s3.134 7 7 7 7-3.134 7-7-3.134-7-7-7zm0 3c2.21 0 4 1.79 4 4s-1.79 4-4 4-4-1.79-4-4 1.79-4 4-4z" />,
             EyeOff: (p) => <Icon {...p} d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22" />,
             Check: (p) => <Icon {...p} d="M20 6 9 17l-5-5" />,
             CheckCircle: (p) => <Icon {...p} d="M22 11.08V12a10 10 0 1 1-5.93-9.14 M22 4 12 14.01l-3-3" />,
+            CheckCircle2: (p) => <Icon {...p} d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z m-1-5l-4-4 1.41-1.41L11 14.17l7.59-7.59L20 8l-9 9z" />,
             AlertTriangle: (p) => <Icon {...p} d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z M12 9v4 M12 17h.01" />,
             ArrowRight: (p) => <Icon {...p} d="M5 12h14 M12 5l7 7-7 7" />,
             RefreshCw: (p) => <Icon {...p} d="M23 4v6h-6 M1 20v-6h6 M3.51 9a9 9 0 0 1 14.85-3.36L23 10 M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />,
@@ -72,7 +92,7 @@
             ChevronUp: (p) => <Icon {...p} d="m18 15-6-6-6 6" />,
         };
 
-        // --- Constants & Types ---
+        // --- Data & Types ---
         const TASKS = {
             email: {
                 id: 'email',
@@ -94,10 +114,9 @@
             }
         };
 
-        // --- Service Logic ---
+        // --- Service: Feedback Logic ---
         const generateFeedback = (taskType, result) => {
             const taskName = TASKS[taskType].title;
-            
             const timeDiff = (result.bad.timeTaken - result.good.timeTaken) / 1000;
             const clickDiff = result.bad.clickCount - result.good.clickCount;
             const mistakeDiff = result.bad.mistakes - result.good.mistakes;
@@ -122,23 +141,10 @@
 
             feedback += `💡 **まとめ**: \n良いUIとは「ユーザーに考えさせない」デザインです。ラベルの明確さ、エラーの親切な表示、視線の流れを意識した配置。これらが揃うことで、誰もが迷わず使えるシステムになります。`;
 
-            // User requested simpler numeric output only for report in final stage
-            // Overriding per last request "数値の比較結果のみを表示"
-            let report = `【数値比較レポート - ${taskName}】\n`;
-            report += `----------------------------------------\n`;
-            report += `完了時間: Bad ${ (result.bad.timeTaken/1000).toFixed(1) }s  vs  Good ${ (result.good.timeTaken/1000).toFixed(1) }s\n`;
-            report += `差分: ${ timeDiff > 0 ? '+' + timeDiff.toFixed(1) : timeDiff.toFixed(1) }s\n\n`;
-            report += `クリック数: Bad ${ result.bad.clickCount }回  vs  Good ${ result.good.clickCount }回\n`;
-            report += `差分: ${ clickDiff > 0 ? '+' + clickDiff : clickDiff }回\n\n`;
-            report += `ミス回数: Bad ${ result.bad.mistakes }回  vs  Good ${ result.good.mistakes }回\n`;
-            report += `----------------------------------------\n`;
-            
-            return report;
+            return feedback;
         };
 
-        // --- Components ---
-
-        // 1. BadForm
+        // --- Component: BadForm ---
         const BadForm = ({ taskType, onComplete, onMistake }) => {
             const [formData, setFormData] = useState({
                 name: '', zip: '', addr: '', tel: '', email: '', emailConfirm: '', pass: '', passConfirm: ''
@@ -325,7 +331,7 @@
             );
         };
 
-        // 2. GoodForm
+        // --- Component: GoodForm ---
         const GoodForm = ({ taskType, onComplete, onMistake }) => {
             const [email, setEmail] = useState('');
             const [password, setPassword] = useState('');
@@ -495,7 +501,7 @@
             );
         };
 
-        // 3. Dashboard
+        // --- Component: Dashboard ---
         const Dashboard = ({ results, taskType, onRestart }) => {
             const feedback = generateFeedback(taskType, results);
             const timeData = [
@@ -565,7 +571,7 @@
             );
         };
 
-        // 4. App (Main Logic)
+        // --- Component: App (Main Logic) ---
         const App = () => {
             const [stage, setStage] = useState('intro');
             const [taskType, setTaskType] = useState('email');
