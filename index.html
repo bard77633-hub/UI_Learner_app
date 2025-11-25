@@ -1,33 +1,819 @@
 <!DOCTYPE html>
 <html lang="ja">
-  <head>
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bad UI vs Good UI - 情報Ⅰ学習教材</title>
+    
+    <!-- Styles -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- React & Libraries -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/recharts/umd/Recharts.js"></script>
+
     <style>
-      body {
-        font-family: 'Inter', sans-serif;
-      }
-      /* Custom styles for Bad UI simulation */
-      .bad-ui-container * {
-        font-family: "Times New Roman", Times, serif;
-      }
+        body { font-family: 'Inter', sans-serif; }
+        .bad-ui-container * { font-family: "Times New Roman", Times, serif; }
+        .animate-fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .blinking-text { animation: blink 1s linear infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
     </style>
-  <script type="importmap">
+<script type="importmap">
 {
   "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
     "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "react": "https://aistudiocdn.com/react@^19.2.0",
     "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0",
     "recharts": "https://aistudiocdn.com/recharts@^3.5.0"
   }
 }
 </script>
 </head>
-  <body class="bg-slate-50 text-slate-900 h-screen overflow-hidden">
+<body class="bg-slate-50 text-slate-900 h-screen overflow-hidden">
     <div id="root" class="h-full"></div>
-  </body>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+        const { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } = Recharts;
+
+        // --- Icons (SVG Components to remove external dependency) ---
+        const Icon = ({ d, size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                <path d={d} />
+            </svg>
+        );
+        
+        const Icons = {
+            Mail: (p) => <Icon {...p} d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z M22 6l-10 7L2 6" />,
+            Lock: (p) => <Icon {...p} d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />, // Custom key/lock
+            LockSimple: (p) => <Icon {...p} d="M19 11H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2zm-7-7a5 5 0 0 0-5 5v3h10V9a5 5 0 0 0-5-5z" />,
+            User: (p) => <Icon {...p} d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8" />,
+            Eye: (p) => <Icon {...p} d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z M12 5c-3.866 0-7 3.134-7 7s3.134 7 7 7 7-3.134 7-7-3.134-7-7-7zm0 3c2.21 0 4 1.79 4 4s-1.79 4-4 4-4-1.79-4-4 1.79-4 4-4z" />,
+            EyeOff: (p) => <Icon {...p} d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22" />,
+            Check: (p) => <Icon {...p} d="M20 6 9 17l-5-5" />,
+            CheckCircle: (p) => <Icon {...p} d="M22 11.08V12a10 10 0 1 1-5.93-9.14 M22 4 12 14.01l-3-3" />,
+            AlertTriangle: (p) => <Icon {...p} d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z M12 9v4 M12 17h.01" />,
+            ArrowRight: (p) => <Icon {...p} d="M5 12h14 M12 5l7 7-7 7" />,
+            RefreshCw: (p) => <Icon {...p} d="M23 4v6h-6 M1 20v-6h6 M3.51 9a9 9 0 0 1 14.85-3.36L23 10 M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />,
+            MapPin: (p) => <Icon {...p} d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z M12 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6" />,
+            Phone: (p) => <Icon {...p} d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />,
+            AlertCircle: (p) => <Icon {...p} d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 8v4 M12 16h.01" />,
+            MousePointer2: (p) => <Icon {...p} d="m12 6 4 5h4l-6 5.25 1.5 6.5L10 18l-5.5 4.75L6 16.25 0 11h4z" />,
+            ThumbsUp: (p) => <Icon {...p} d="M7 10v12 M15 10.41V7a4 4 0 0 0-8 0v4H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h13.29a2 2 0 0 0 1.92-1.47L20.6 11.48A2 2 0 0 0 18.68 10h-3.68z" />,
+            ThumbsDown: (p) => <Icon {...p} d="M17 14V2 M9 13.59V17a4 4 0 0 0 8 0v-4h4a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1H7.71a2 2 0 0 0-1.92 1.47L3.4 12.52A2 2 0 0 0 5.32 14h3.68z" />,
+            ClipboardList: (p) => <Icon {...p} d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2 M15 2h-6a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1z M8 11h4 M8 16h6" />,
+            ChevronDown: (p) => <Icon {...p} d="m6 9 6 6 6-6" />,
+            ChevronUp: (p) => <Icon {...p} d="m18 15-6-6-6 6" />,
+        };
+
+        // --- Constants & Types ---
+        const TASKS = {
+            email: {
+                id: 'email',
+                title: 'メールマガジン登録',
+                description: '入力ミスの起きやすいメールアドレス入力欄のUI比較',
+                instruction: '以下のメールアドレスで登録してください。\n対象: taro.yamada@example.com'
+            },
+            password: {
+                id: 'password',
+                title: 'パスワード設定',
+                description: 'セキュリティと利便性のバランスを学ぶUI比較',
+                instruction: '以下のパスワードを設定してください。\nパスワード: M3@zP7$q'
+            },
+            profile: {
+                id: 'profile',
+                title: 'ユーザー情報登録',
+                description: '住所や電話番号など、定型フォーマットの入力UI比較',
+                instruction: '以下の情報を入力してください。\n氏名: 山田 太郎\n電話: 090-1234-5678\n住所: 123-4567 東京都新宿区1-1'
+            }
+        };
+
+        // --- Service Logic ---
+        const generateFeedback = (taskType, result) => {
+            const taskName = TASKS[taskType].title;
+            
+            const timeDiff = (result.bad.timeTaken - result.good.timeTaken) / 1000;
+            const clickDiff = result.bad.clickCount - result.good.clickCount;
+            const mistakeDiff = result.bad.mistakes - result.good.mistakes;
+
+            let feedback = `【${taskName}の分析結果】\n\n`;
+
+            if (timeDiff > 5) {
+                feedback += `⏱ **時間の違い**: 悪いUIでは良いUIより${timeDiff.toFixed(1)}秒も多く時間がかかりましたね。レイアウトの乱れや入力項目のわかりにくさが、ユーザーの判断を遅らせる主な原因です。\n\n`;
+            } else if (timeDiff > 0) {
+                feedback += `⏱ **時間の違い**: 良いUIの方が${timeDiff.toFixed(1)}秒早く完了できました。整理された情報は、脳の処理負荷を下げてスムーズな操作を導きます。\n\n`;
+            } else {
+                feedback += `⏱ **時間の違い**: 驚くべきことに、時間はあまり変わりませんでしたね！しかし、ストレスの感じ方はどうでしたか？\n\n`;
+            }
+
+            if (result.bad.mistakes > 0) {
+                feedback += `⚠️ **ミスの発生**: 悪いUIでは${result.bad.mistakes}回のミスが発生しました。入力ルールの説明不足や、紛らわしいボタン配置（ダークパターン）は、ユーザーの自己肯定感を下げてしまいます。\n\n`;
+            }
+
+            if (clickDiff > 3) {
+                feedback += `🖱 **操作の手数**: 悪いUIはクリック数が${clickDiff}回も多くなっています。タブ移動（Tabキー）の順序が狂っていたり、クリック領域が狭かったりすると、無駄な操作が増えます。\n\n`;
+            }
+
+            feedback += `💡 **まとめ**: \n良いUIとは「ユーザーに考えさせない」デザインです。ラベルの明確さ、エラーの親切な表示、視線の流れを意識した配置。これらが揃うことで、誰もが迷わず使えるシステムになります。`;
+
+            // User requested simpler numeric output only for report in final stage
+            // Overriding per last request "数値の比較結果のみを表示"
+            let report = `【数値比較レポート - ${taskName}】\n`;
+            report += `----------------------------------------\n`;
+            report += `完了時間: Bad ${ (result.bad.timeTaken/1000).toFixed(1) }s  vs  Good ${ (result.good.timeTaken/1000).toFixed(1) }s\n`;
+            report += `差分: ${ timeDiff > 0 ? '+' + timeDiff.toFixed(1) : timeDiff.toFixed(1) }s\n\n`;
+            report += `クリック数: Bad ${ result.bad.clickCount }回  vs  Good ${ result.good.clickCount }回\n`;
+            report += `差分: ${ clickDiff > 0 ? '+' + clickDiff : clickDiff }回\n\n`;
+            report += `ミス回数: Bad ${ result.bad.mistakes }回  vs  Good ${ result.good.mistakes }回\n`;
+            report += `----------------------------------------\n`;
+            
+            return report;
+        };
+
+        // --- Components ---
+
+        // 1. BadForm
+        const BadForm = ({ taskType, onComplete, onMistake }) => {
+            const [formData, setFormData] = useState({
+                name: '', zip: '', addr: '', tel: '', email: '', emailConfirm: '', pass: '', passConfirm: ''
+            });
+            const [agreed, setAgreed] = useState(false);
+
+            const handleChange = (field, value) => {
+                setFormData(prev => ({ ...prev, [field]: value }));
+            };
+
+            const handleEmailSubmit = () => {
+                if (!formData.email.includes('@')) { alert('System Error: Invalid format 0x0001'); onMistake(); return; }
+                if (formData.email !== 'taro.yamada@example.com') { alert('Verification Failed: Input does not match expected record.'); onMistake(); return; }
+                if (formData.email !== formData.emailConfirm) { alert('Error: Emails do not match.'); onMistake(); return; }
+                onComplete();
+            };
+
+            const handlePasswordSubmit = () => {
+                if (formData.pass !== 'M3@zP7$q') {
+                    setFormData(prev => ({ ...prev, pass: '', passConfirm: '' }));
+                    alert('PASSWORD REJECTED: Policy violation or incorrect string.');
+                    onMistake();
+                    return;
+                }
+                if (formData.pass !== formData.passConfirm) {
+                     alert('Confirmation Mismatch.');
+                     setFormData(prev => ({ ...prev, passConfirm: '' }));
+                     onMistake();
+                     return;
+                }
+                if (!agreed) {
+                    alert('Error: You must accept the mandatory terms.');
+                    onMistake();
+                    return;
+                }
+                onComplete();
+            };
+
+            const handleProfileSubmit = () => {
+                if (!formData.name || !formData.addr || !formData.tel) { alert('NULL VALUE DETECTED.'); onMistake(); return; }
+                if (formData.tel.includes('-')) { alert('Format Error: Numbers only allowed in DB column.'); onMistake(); return; }
+                if (!formData.zip) { alert('Zip Code Missing'); onMistake(); return; }
+                onComplete();
+            };
+
+            const handleSubmit = () => {
+                if (taskType === 'email') handleEmailSubmit();
+                if (taskType === 'password') handlePasswordSubmit();
+                if (taskType === 'profile') handleProfileSubmit();
+            };
+
+            const handleReset = () => {
+                setFormData({ name: '', zip: '', addr: '', tel: '', email: '', emailConfirm: '', pass: '', passConfirm: '' });
+                setAgreed(false);
+                onMistake(); 
+            };
+
+            const fakeShowPassword = () => {
+                alert("SECURITY ALERT: displaying passwords on screen is dangerous and prohibited by IT policy.");
+                onMistake();
+            };
+
+            return (
+                <div className="bad-ui-container p-6 bg-[#e0e0e0] text-[#333] h-full flex flex-col border-8 border-inset border-gray-400 overflow-y-auto font-serif">
+                    <div className="bg-blue-900 text-white p-2 mb-6 text-center">
+                         <h2 className="text-xl font-serif tracking-widest">ADMIN_CONSOLE_V1</h2>
+                    </div>
+                    
+                    <div className="flex flex-col gap-8 w-full max-w-lg mx-auto">
+                        
+                        {taskType === 'email' && (
+                          <div className="border-2 border-black p-4 bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                            <p className="text-sm mb-2 font-bold uppercase decoration-double underline">Registration Wizard</p>
+                            <div className="flex flex-col gap-4">
+                               <div>
+                                    <label className="text-xs font-bold block mb-1">MAIL_ADDR_PRIMARY:</label>
+                                    <input 
+                                        type="text" 
+                                        value={formData.email}
+                                        onChange={(e) => handleChange('email', e.target.value)}
+                                        className="border-2 border-blue-800 bg-blue-50 p-1 w-full text-sm"
+                                        placeholder="user(at)domain(dot)com"
+                                    />
+                               </div>
+                               <div>
+                                    <label className="text-xs font-bold block mb-1">CONFIRM_ADDR_PRIMARY:</label>
+                                    <input 
+                                        type="text" 
+                                        value={formData.emailConfirm}
+                                        onChange={(e) => handleChange('emailConfirm', e.target.value)}
+                                        onPaste={(e) => { e.preventDefault(); alert('Paste disabled for security.'); }}
+                                        className="border-2 border-red-800 bg-red-50 p-1 w-full text-sm"
+                                    />
+                                    <span className="text-[10px] text-red-600">* Do not copy-paste.</span>
+                               </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {taskType === 'password' && (
+                          <div className="border border-gray-400 p-6 bg-gray-200">
+                            <p className="text-xs mb-4 text-center font-mono text-red-600 blinking-text">!! SECURE AREA !!</p>
+                            <div className="flex flex-col gap-4">
+                               <div className="relative">
+                                   <label className="text-sm font-bold text-gray-500">SecretString:</label>
+                                   <div className="flex gap-1">
+                                        <input 
+                                            type="password"
+                                            value={formData.pass}
+                                            onChange={(e) => handleChange('pass', e.target.value)}
+                                            className="bg-gray-600 text-gray-800 font-mono p-1 w-full border border-gray-700"
+                                            autoComplete="new-password"
+                                        />
+                                        <button onClick={fakeShowPassword} className="bg-gray-300 border border-gray-500 p-1" title="Show Password">
+                                            <Icons.Eye size={16} className="text-gray-500" />
+                                        </button>
+                                   </div>
+                                   <p className="text-[9px] text-gray-400 mt-1">Case sensitive. Alphanumeric. Symbols required.</p>
+                               </div>
+
+                               <div>
+                                   <label className="text-sm font-bold text-gray-500">VerifyString:</label>
+                                   <input 
+                                        type="password"
+                                        value={formData.passConfirm}
+                                        onChange={(e) => handleChange('passConfirm', e.target.value)}
+                                        className="bg-gray-600 text-gray-800 font-mono p-1 w-full border border-gray-700"
+                                   />
+                               </div>
+
+                               <div className="border border-dotted border-black p-2 bg-yellow-100">
+                                  <div className="flex items-start gap-2">
+                                      <input type="checkbox" className="mt-1" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+                                      <span className="text-[10px] leading-tight font-bold">
+                                        REQUIRED: I agree to receive marketing emails, third-party offers, and daily newsletters. Unchecking this will cancel registration.
+                                      </span>
+                                  </div>
+                               </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {taskType === 'profile' && (
+                          <div className="space-y-6 font-mono text-sm">
+                             <div className="bg-white border border-black p-2">
+                                 <div className="flex flex-col mb-4">
+                                    <label className="text-xs mb-1">CLIENT_ID_NAME (LAST FIRST):</label>
+                                    <input type="text" value={formData.name} onChange={(e) => handleChange('name', e.target.value)} className="border-b-2 border-black bg-gray-100 outline-none px-1" />
+                                 </div>
+
+                                 <div className="flex flex-wrap gap-2 mb-4">
+                                    <div className="w-1/3">
+                                        <label className="text-[10px]">ZIP:</label>
+                                        <input type="text" value={formData.zip} onChange={(e) => handleChange('zip', e.target.value)} className="w-full border border-black" />
+                                    </div>
+                                    <div className="w-full">
+                                        <label className="text-[10px]">MUNICIPALITY_STREET_APT:</label>
+                                        <input type="text" value={formData.addr} onChange={(e) => handleChange('addr', e.target.value)} className="w-full border border-black" />
+                                    </div>
+                                 </div>
+
+                                 <div className="flex items-center gap-2 border-t border-black pt-2">
+                                    <label className="text-xs">CONTACT_DIGITS:</label>
+                                    <input type="text" value={formData.tel} onChange={(e) => handleChange('tel', e.target.value)} className="bg-yellow-50 border border-yellow-500 p-1 flex-grow" placeholder="09012345678" />
+                                 </div>
+                             </div>
+                          </div>
+                        )}
+
+                        <div className="flex justify-between items-center mt-8 bg-gray-300 p-4 rounded border-t-4 border-gray-500">
+                          <button onClick={handleSubmit} className="bg-gray-500 text-gray-200 px-4 py-1 text-xs hover:bg-gray-600 border border-gray-600 shadow-inner">
+                            Execute Submit
+                          </button>
+                          <button onClick={handleReset} className="bg-blue-600 text-white px-8 py-3 text-lg font-bold hover:bg-blue-700 border-4 border-blue-800 shadow-lg rounded">
+                            CLEAR FORM
+                          </button>
+                        </div>
+                        
+                        <div className="text-center text-[10px] text-red-600 font-bold animate-pulse">
+                           {taskType === 'password' ? 'CAPS LOCK IS OFF (MAYBE)' : 'SYSTEM READY'}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // 2. GoodForm
+        const GoodForm = ({ taskType, onComplete, onMistake }) => {
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [showPassword, setShowPassword] = useState(false);
+            
+            const [lastName, setLastName] = useState('');
+            const [firstName, setFirstName] = useState('');
+            const [zip, setZip] = useState('');
+            const [pref, setPref] = useState('');
+            const [city, setCity] = useState('');
+            const [street, setStreet] = useState('');
+            const [tel, setTel] = useState('');
+
+            const [errors, setErrors] = useState({});
+
+            const validate = () => {
+                const newErrors = {};
+                let isValid = true;
+
+                if (taskType === 'email') {
+                    if (!email.includes('@')) { newErrors.email = '有効なメールアドレスを入力してください (@が含まれていません)'; isValid = false; }
+                    else if (email !== 'taro.yamada@example.com') { newErrors.email = '指示されたメールアドレスと一致しません。'; isValid = false; }
+                }
+                if (taskType === 'password') {
+                    if (password.length < 8) { newErrors.password = 'パスワードは8文字以上である必要があります。'; isValid = false; }
+                    if (password !== 'M3@zP7$q') { newErrors.password = '指示されたパスワードと一致しません。'; isValid = false; }
+                }
+                if (taskType === 'profile') {
+                    if (!lastName || !firstName) { newErrors.name = '氏名を入力してください'; isValid = false; }
+                    if (!zip.match(/^\d{3}-?\d{4}$/)) { newErrors.zip = '郵便番号を確認してください'; isValid = false; }
+                    if (!tel.match(/^0\d{1,4}-?\d{1,4}-?\d{3,4}$/)) { newErrors.tel = '電話番号を確認してください'; isValid = false; }
+                    if (!pref || !city || !street) { newErrors.addr = '住所を完了してください'; isValid = false; }
+                }
+
+                setErrors(newErrors);
+                if (!isValid) onMistake();
+                return isValid;
+            };
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (validate()) onComplete();
+            };
+
+            return (
+                <div className="max-w-xl mx-auto p-8 bg-white rounded-xl shadow-sm border border-slate-200 my-8">
+                  <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+                     {taskType === 'email' && <Icons.Mail className="text-blue-500"/>}
+                     {taskType === 'password' && <Icons.LockSimple className="text-blue-500"/>}
+                     {taskType === 'profile' && <Icons.User className="text-blue-500"/>}
+                     
+                     {taskType === 'email' && 'メールマガジン登録'}
+                     {taskType === 'password' && 'パスワード設定'}
+                     {taskType === 'profile' && '基本情報登録'}
+                  </h2>
+                  
+                  <form onSubmit={handleSubmit}>
+                    
+                    {taskType === 'email' && (
+                      <div className="space-y-6">
+                         <div>
+                            <label className="block font-bold text-slate-700 mb-2">メールアドレス</label>
+                            <div className="relative">
+                              <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"><Icons.Mail size={20} /></div>
+                              <input
+                                type="email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                placeholder="taro.yamada@example.com"
+                                className={`w-full pl-10 pr-4 py-3 border rounded-lg outline-none transition-colors ${errors.email ? 'border-red-500 bg-red-50' : 'border-slate-300 focus:border-blue-500'}`}
+                              />
+                            </div>
+                            {errors.email && <p className="text-red-600 text-sm mt-1 flex items-center gap-1"><Icons.AlertCircle size={14}/> {errors.email}</p>}
+                            <p className="text-slate-500 text-sm mt-2">※受信可能なメールアドレスを入力してください。</p>
+                         </div>
+                      </div>
+                    )}
+
+                    {taskType === 'password' && (
+                        <div className="space-y-6">
+                            <div>
+                                <label className="block font-bold text-slate-700 mb-2">パスワード設定</label>
+                                <div className="relative">
+                                    <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"><Icons.LockSimple size={20} /></div>
+                                    <input
+                                      type={showPassword ? "text" : "password"}
+                                      value={password}
+                                      onChange={(e) => setPassword(e.target.value)}
+                                      placeholder="M3@zP7$q"
+                                      className={`w-full pl-10 pr-12 py-3 border rounded-lg outline-none transition-colors ${errors.password ? 'border-red-500 bg-red-50' : 'border-slate-300 focus:border-blue-500'}`}
+                                    />
+                                    <button 
+                                      type="button"
+                                      onClick={() => setShowPassword(!showPassword)}
+                                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                                    >
+                                      {showPassword ? <Icons.EyeOff size={20}/> : <Icons.Eye size={20}/>}
+                                    </button>
+                                </div>
+                                
+                                <div className="mt-2 flex gap-1 h-1">
+                                    <div className={`flex-1 rounded-full ${password.length > 0 ? 'bg-red-400' : 'bg-slate-200'}`}></div>
+                                    <div className={`flex-1 rounded-full ${password.length > 4 ? 'bg-yellow-400' : 'bg-slate-200'}`}></div>
+                                    <div className={`flex-1 rounded-full ${password.length >= 8 ? 'bg-green-400' : 'bg-slate-200'}`}></div>
+                                </div>
+
+                                {errors.password && <p className="text-red-600 text-sm mt-1 flex items-center gap-1"><Icons.AlertCircle size={14}/> {errors.password}</p>}
+                                <p className="text-slate-500 text-sm mt-2">※半角英数字8文字以上で入力してください。</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {taskType === 'profile' && (
+                        <div className="space-y-8">
+                            <div className="grid md:grid-cols-3 gap-4 items-center">
+                                 <label className="font-medium text-slate-700">お名前 <span className="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded">必須</span></label>
+                                 <div className="md:col-span-2 flex gap-4">
+                                    <input type="text" placeholder="姓" value={lastName} onChange={e => setLastName(e.target.value)} className="flex-1 border border-slate-300 rounded-lg px-4 py-2 focus:border-blue-500 outline-none" />
+                                    <input type="text" placeholder="名" value={firstName} onChange={e => setFirstName(e.target.value)} className="flex-1 border border-slate-300 rounded-lg px-4 py-2 focus:border-blue-500 outline-none" />
+                                 </div>
+                                 {errors.name && <p className="md:col-start-2 md:col-span-2 text-red-600 text-sm">{errors.name}</p>}
+                            </div>
+
+                            <div className="grid md:grid-cols-3 gap-4 items-center">
+                                <label className="font-medium text-slate-700">電話番号</label>
+                                <div className="md:col-span-2 relative">
+                                    <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"><Icons.Phone size={18} /></div>
+                                    <input type="tel" placeholder="090-1234-5678" value={tel} onChange={e => setTel(e.target.value)} className="w-full border border-slate-300 rounded-lg pl-10 pr-4 py-2 focus:border-blue-500 outline-none" />
+                                </div>
+                                {errors.tel && <p className="md:col-start-2 md:col-span-2 text-red-600 text-sm">{errors.tel}</p>}
+                            </div>
+
+                            <div className="grid md:grid-cols-3 gap-4 items-start">
+                                <label className="font-medium text-slate-700 pt-2">ご住所</label>
+                                <div className="md:col-span-2 space-y-3">
+                                    <div className="flex gap-2 items-center">
+                                        <Icons.MapPin size={18} className="text-slate-400"/>
+                                        <input type="text" placeholder="123-4567" value={zip} onChange={e => setZip(e.target.value)} className="w-32 border border-slate-300 rounded-lg px-3 py-2 focus:border-blue-500 outline-none" />
+                                        <button type="button" className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded hover:bg-blue-100">住所検索</button>
+                                    </div>
+                                    {errors.zip && <p className="text-red-600 text-sm">{errors.zip}</p>}
+                                    
+                                    <div className="flex gap-2">
+                                        <select value={pref} onChange={e => setPref(e.target.value)} className="border border-slate-300 rounded-lg px-3 py-2 bg-white">
+                                            <option value="">都道府県</option>
+                                            <option value="Tokyo">東京都</option>
+                                            <option value="Osaka">大阪府</option>
+                                        </select>
+                                        <input type="text" placeholder="市区町村" value={city} onChange={e => setCity(e.target.value)} className="flex-1 border border-slate-300 rounded-lg px-3 py-2" />
+                                    </div>
+                                    <input type="text" placeholder="番地" value={street} onChange={e => setStreet(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-2" />
+                                    {errors.addr && <p className="text-red-600 text-sm">{errors.addr}</p>}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex justify-center mt-10">
+                      <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-10 rounded-lg shadow-md transform transition hover:-translate-y-0.5 flex items-center gap-2">
+                        <Icons.Check size={20} />
+                        {taskType === 'password' ? '設定する' : '登録する'}
+                      </button>
+                    </div>
+
+                  </form>
+                </div>
+            );
+        };
+
+        // 3. Dashboard
+        const Dashboard = ({ results, taskType, onRestart }) => {
+            const feedback = generateFeedback(taskType, results);
+            const timeData = [
+                { name: '悪いUI', time: parseFloat((results.bad.timeTaken / 1000).toFixed(2)) },
+                { name: '良いUI', time: parseFloat((results.good.timeTaken / 1000).toFixed(2)) },
+            ];
+            const clickData = [
+                { name: '悪いUI', clicks: results.bad.clickCount },
+                { name: '良いUI', clicks: results.good.clickCount },
+            ];
+
+            return (
+                <div className="max-w-4xl mx-auto p-6">
+                  <h1 className="text-3xl font-bold text-center mb-2 text-slate-800">体験終了！ 結果発表</h1>
+                  <p className="text-center text-slate-600 mb-8">{TASKS[taskType].title} におけるあなたの操作データを分析しました。</p>
+
+                  <div className="grid md:grid-cols-2 gap-8 mb-8">
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                      <h3 className="text-lg font-semibold mb-4 text-center">完了までの時間 (秒)</h3>
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={timeData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" />
+                            <YAxis />
+                            <Tooltip />
+                            <Bar dataKey="time" fill="#3b82f6" name="時間(秒)" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                      <h3 className="text-lg font-semibold mb-4 text-center">クリック数・操作数 (回)</h3>
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={clickData}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="name" />
+                            <YAxis allowDecimals={false} />
+                            <Tooltip />
+                            <Bar dataKey="clicks" fill="#8b5cf6" name="クリック数" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-6 mb-8 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-4 opacity-10">
+                      <Icons.CheckCircle2 size={100} className="text-indigo-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-indigo-900 mb-3 flex items-center gap-2">分析レポート</h3>
+                    <div className="prose prose-indigo max-w-none">
+                      <div className="whitespace-pre-line text-indigo-800 leading-relaxed font-mono text-sm bg-white p-4 border border-indigo-200 rounded">
+                        {feedback}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-center">
+                    <button onClick={onRestart} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-8 py-3 rounded-full font-bold transition-all transform hover:scale-105">
+                      <Icons.RefreshCw size={20} /> トップに戻る
+                    </button>
+                  </div>
+                </div>
+            );
+        };
+
+        // 4. App (Main Logic)
+        const App = () => {
+            const [stage, setStage] = useState('intro');
+            const [taskType, setTaskType] = useState('email');
+            const [taskOrder, setTaskOrder] = useState([]);
+            const [completedTasks, setCompletedTasks] = useState([]);
+            const [isInstructionMinimized, setIsInstructionMinimized] = useState(false);
+            
+            const [results, setResults] = useState({
+                bad: { clickCount: 0, timeTaken: 0, mistakes: 0 },
+                good: { clickCount: 0, timeTaken: 0, mistakes: 0 }
+            });
+
+            const startTimeRef = useRef(0);
+            const clickCountRef = useRef(0);
+
+            useEffect(() => {
+                const handleGlobalClick = () => {
+                    if (stage === 'task-bad' || stage === 'task-good') {
+                        clickCountRef.current += 1;
+                    }
+                };
+                window.addEventListener('click', handleGlobalClick);
+                return () => window.removeEventListener('click', handleGlobalClick);
+            }, [stage]);
+
+            const handleTaskSelection = (type) => {
+                setTaskType(type);
+                setStage('order-selection');
+            };
+
+            const handleOrderSelection = (firstStyle) => {
+                const order = firstStyle === 'bad' ? ['bad', 'good'] : ['good', 'bad'];
+                setTaskOrder(order);
+                const firstStage = order[0] === 'bad' ? 'briefing-bad' : 'briefing-good';
+                setStage(firstStage);
+            };
+
+            const startTask = (nextStage) => {
+                startTimeRef.current = Date.now();
+                clickCountRef.current = 0;
+                setIsInstructionMinimized(false);
+                setStage(nextStage);
+            };
+
+            const completeTask = (currentStyle) => {
+                const endTime = Date.now();
+                const timeTaken = endTime - startTimeRef.current;
+                
+                setResults(prev => ({
+                    ...prev,
+                    [currentStyle]: {
+                        ...prev[currentStyle],
+                        clickCount: clickCountRef.current,
+                        timeTaken,
+                    }
+                }));
+
+                const newCompleted = [...completedTasks, currentStyle];
+                setCompletedTasks(newCompleted);
+
+                const remainingTask = taskOrder.find(t => !newCompleted.includes(t));
+                if (remainingTask) {
+                    setStage(remainingTask === 'bad' ? 'briefing-bad' : 'briefing-good');
+                } else {
+                    setStage('results');
+                }
+            };
+
+            const handleMistake = (currentStyle) => {
+                setResults(prev => ({
+                    ...prev,
+                    [currentStyle]: { ...prev[currentStyle], mistakes: prev[currentStyle].mistakes + 1 }
+                }));
+            };
+
+            const resetApp = () => {
+                setResults({
+                    bad: { clickCount: 0, timeTaken: 0, mistakes: 0 },
+                    good: { clickCount: 0, timeTaken: 0, mistakes: 0 }
+                });
+                setCompletedTasks([]);
+                setTaskOrder([]);
+                setStage('intro');
+            };
+
+            const renderBriefing = (type) => {
+                const isFirst = completedTasks.length === 0;
+                return (
+                    <div className="max-w-2xl mx-auto text-center mt-20 p-8 bg-white rounded-2xl shadow-xl border border-slate-100 animate-fade-in">
+                        <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-6 ${type === 'bad' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
+                            {type === 'bad' ? <Icons.AlertTriangle size={32} /> : <Icons.CheckCircle size={32} />}
+                        </div>
+                        <h2 className="text-3xl font-bold mb-2">
+                            {type === 'bad' ? '悪いUI (Bad UI)' : '良いUI (Good UI)'}
+                            <span className="text-lg font-normal text-slate-500 ml-2">- {isFirst ? '前半戦' : '後半戦'}</span>
+                        </h2>
+                        {!isFirst && (
+                           <p className="mb-6 text-slate-500 bg-slate-100 py-2 px-4 rounded-lg inline-block">
+                             お疲れ様でした！次は比較のために<strong>{type === 'bad' ? '使いにくいデザイン' : '理想的なデザイン'}</strong>を体験します。
+                           </p>
+                        )}
+                        <div className="text-lg text-slate-600 mb-8 mt-4 bg-slate-50 p-4 rounded-lg border border-slate-200 text-left">
+                          <p className="font-bold text-slate-800 mb-2 border-b border-slate-200 pb-2">📝 ミッション指示書</p>
+                          <p className="whitespace-pre-line font-medium">{TASKS[taskType].instruction}</p>
+                        </div>
+                        <button onClick={() => startTask(type === 'bad' ? 'task-bad' : 'task-good')}
+                          className={`px-8 py-3 rounded-full font-bold text-white transition-transform hover:scale-105 shadow-lg ${type === 'bad' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}>
+                          {type === 'bad' ? '悪いUIを体験する' : '良いUIを体験する'}
+                        </button>
+                    </div>
+                );
+            };
+
+            return (
+                <div className="min-h-screen bg-slate-50 font-sans text-slate-900 flex flex-col">
+                    {!stage.startsWith('task-') && (
+                        <header className="bg-white border-b border-slate-200 py-4 px-6">
+                            <div className="max-w-6xl mx-auto flex items-center gap-2">
+                                <Icons.MousePointer2 className="text-blue-600" />
+                                <h1 className="font-bold text-xl tracking-tight">UI/UX Lab. <span className="text-slate-400 font-normal ml-2">情報Ⅰ 教材アプリ</span></h1>
+                            </div>
+                        </header>
+                    )}
+
+                    {stage.startsWith('task-') && (
+                        <div className="bg-slate-900 text-white py-2 px-4 text-center sticky top-0 z-50 shadow-md flex justify-between items-center">
+                            <div className="w-1/3 text-left pl-4 text-gray-400 text-xs">Mode: {stage === 'task-bad' ? 'Bad UI' : 'Good UI'} | Genre: {TASKS[taskType].title}</div>
+                            <div className="w-1/3 text-center"><span className="text-xs bg-slate-800 px-2 py-1 rounded text-slate-300">ミッション中</span></div>
+                            <div className="w-1/3 text-right pr-4"><button onClick={resetApp} className="text-xs text-slate-400 hover:text-white underline">中断する</button></div>
+                        </div>
+                    )}
+
+                    <main className="flex-grow relative overflow-auto">
+                        {stage === 'intro' && (
+                            <div className="h-full flex flex-col items-center justify-center p-6">
+                                <div className="text-center max-w-3xl">
+                                    <span className="inline-block py-1 px-3 rounded-full bg-blue-100 text-blue-700 text-sm font-semibold mb-4">高校 情報Ⅰ 実習</span>
+                                    <h1 className="text-5xl font-extrabold mb-6 tracking-tight text-slate-900">悪いUI vs 良いUI <br/><span className="text-blue-600">体験型比較シミュレーター</span></h1>
+                                    <p className="text-xl text-slate-600 mb-10 leading-relaxed">「使いにくい」と「使いやすい」を実際に操作して比較します。<br/>デザインがユーザー行動に与える影響をデータで確認しましょう。</p>
+                                    <button onClick={() => setStage('task-selection')} className="group relative flex items-center gap-4 p-6 bg-blue-600 text-white rounded-full hover:bg-blue-700 hover:shadow-xl transition-all pr-10 pl-10 shadow-lg mx-auto">
+                                        <span className="text-lg font-bold">実習をはじめる</span><Icons.ArrowRight className="group-hover:translate-x-1 transition-transform" size={24} />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {stage === 'task-selection' && (
+                           <div className="h-full flex flex-col items-center py-12 px-6 bg-slate-50">
+                              <h2 className="text-3xl font-bold mb-2 text-slate-800">実習テーマを選んでください</h2>
+                              <p className="text-slate-600 mb-10">興味のあるジャンルを選択して比較を開始します。</p>
+                              <div className="grid md:grid-cols-3 gap-6 w-full max-w-5xl">
+                                 <button onClick={() => handleTaskSelection('email')} className="bg-white p-8 rounded-2xl border-2 border-slate-200 hover:border-blue-500 hover:shadow-xl transition-all text-left flex flex-col h-full">
+                                    <div className="bg-blue-50 w-14 h-14 rounded-xl flex items-center justify-center text-blue-600 mb-6"><Icons.Mail size={28}/></div>
+                                    <h3 className="text-xl font-bold mb-2">{TASKS.email.title}</h3>
+                                    <p className="text-slate-500 text-sm leading-relaxed flex-grow">{TASKS.email.description}</p>
+                                    <div className="mt-6 pt-4 border-t border-slate-100 text-blue-600 font-semibold text-sm flex items-center gap-1">選択する <Icons.ArrowRight size={16}/></div>
+                                 </button>
+                                 <button onClick={() => handleTaskSelection('password')} className="bg-white p-8 rounded-2xl border-2 border-slate-200 hover:border-indigo-500 hover:shadow-xl transition-all text-left flex flex-col h-full">
+                                    <div className="bg-indigo-50 w-14 h-14 rounded-xl flex items-center justify-center text-indigo-600 mb-6"><Icons.LockSimple size={28}/></div>
+                                    <h3 className="text-xl font-bold mb-2">{TASKS.password.title}</h3>
+                                    <p className="text-slate-500 text-sm leading-relaxed flex-grow">{TASKS.password.description}</p>
+                                    <div className="mt-6 pt-4 border-t border-slate-100 text-indigo-600 font-semibold text-sm flex items-center gap-1">選択する <Icons.ArrowRight size={16}/></div>
+                                 </button>
+                                 <button onClick={() => handleTaskSelection('profile')} className="bg-white p-8 rounded-2xl border-2 border-slate-200 hover:border-emerald-500 hover:shadow-xl transition-all text-left flex flex-col h-full">
+                                    <div className="bg-emerald-50 w-14 h-14 rounded-xl flex items-center justify-center text-emerald-600 mb-6"><Icons.User size={28}/></div>
+                                    <h3 className="text-xl font-bold mb-2">{TASKS.profile.title}</h3>
+                                    <p className="text-slate-500 text-sm leading-relaxed flex-grow">{TASKS.profile.description}</p>
+                                    <div className="mt-6 pt-4 border-t border-slate-100 text-emerald-600 font-semibold text-sm flex items-center gap-1">選択する <Icons.ArrowRight size={16}/></div>
+                                 </button>
+                              </div>
+                           </div>
+                        )}
+
+                        {stage === 'order-selection' && (
+                          <div className="h-full flex flex-col items-center justify-center p-6 bg-slate-50">
+                             <h2 className="text-3xl font-bold mb-8 text-slate-800">どちらから体験しますか？</h2>
+                             <p className="text-slate-600 mb-12 max-w-lg text-center">体験の順番を選択してください。</p>
+                             <div className="grid md:grid-cols-2 gap-6 w-full max-w-4xl">
+                                <button onClick={() => handleOrderSelection('bad')} className="group flex flex-col items-center p-8 bg-white rounded-2xl border-2 border-slate-200 hover:border-red-400 hover:shadow-xl transition-all">
+                                  <div className="w-20 h-20 rounded-full bg-red-50 text-red-500 flex items-center justify-center mb-4 group-hover:bg-red-100 transition-colors"><Icons.ThumbsDown size={40} /></div>
+                                  <h3 className="text-xl font-bold mb-2 text-slate-800">悪いUI から始める</h3>
+                                  <p className="text-center text-slate-500 text-sm leading-relaxed">「使いにくさ」を先に体験し、<br/>改善されたUIの快適さを実感するコース。</p>
+                                  <span className="mt-6 text-red-600 font-semibold text-sm flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">こちらを選択 <Icons.ArrowRight size={16} /></span>
+                                </button>
+                                <button onClick={() => handleOrderSelection('good')} className="group flex flex-col items-center p-8 bg-white rounded-2xl border-2 border-slate-200 hover:border-blue-400 hover:shadow-xl transition-all">
+                                  <div className="w-20 h-20 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center mb-4 group-hover:bg-blue-100 transition-colors"><Icons.ThumbsUp size={40} /></div>
+                                  <h3 className="text-xl font-bold mb-2 text-slate-800">良いUI から始める</h3>
+                                  <p className="text-center text-slate-500 text-sm leading-relaxed">「理想形」を先に体験し、<br/>悪いUIのストレスを痛感するコース。</p>
+                                  <span className="mt-6 text-blue-600 font-semibold text-sm flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">こちらを選択 <Icons.ArrowRight size={16} /></span>
+                                </button>
+                             </div>
+                          </div>
+                        )}
+
+                        {stage === 'briefing-bad' && renderBriefing('bad')}
+                        
+                        {stage === 'task-bad' && (
+                          <div className="h-full bg-gray-200 p-4 md:p-8 flex justify-center items-center">
+                             <div className="w-full max-w-[800px] h-[600px] bg-white shadow-2xl overflow-hidden border border-gray-400 relative flex flex-col">
+                                <div className="bg-gray-300 border-b border-gray-400 p-1 flex items-center gap-1 shrink-0">
+                                  <div className="w-3 h-3 rounded-full bg-red-400 border border-red-500"></div>
+                                  <div className="w-3 h-3 rounded-full bg-yellow-400 border border-yellow-500"></div>
+                                  <div className="w-3 h-3 rounded-full bg-green-400 border border-green-500"></div>
+                                  <span className="ml-2 text-xs text-gray-600">Legacy System v1.0</span>
+                                </div>
+                                <div className="flex-grow overflow-auto relative">
+                                  <BadForm taskType={taskType} onComplete={() => completeTask('bad')} onMistake={() => handleMistake('bad')} />
+                                </div>
+                             </div>
+                          </div>
+                        )}
+
+                        {stage === 'briefing-good' && renderBriefing('good')}
+
+                        {stage === 'task-good' && (
+                          <div className="h-full bg-slate-100 p-4 md:p-8 flex justify-center items-center">
+                             <div className="w-full max-w-4xl bg-white shadow-xl rounded-xl overflow-hidden min-h-[400px] max-h-full overflow-auto">
+                                <GoodForm taskType={taskType} onComplete={() => completeTask('good')} onMistake={() => handleMistake('good')} />
+                             </div>
+                          </div>
+                        )}
+
+                        {stage === 'results' && <Dashboard results={results} taskType={taskType} onRestart={resetApp} />}
+
+                        {(stage === 'task-bad' || stage === 'task-good') && (
+                            <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end">
+                                <div className={`bg-white rounded-lg shadow-2xl border-2 border-slate-800 overflow-hidden transition-all duration-300 ${isInstructionMinimized ? 'w-48' : 'w-80'}`}>
+                                  <div className="bg-slate-800 text-white p-3 flex justify-between items-center cursor-pointer hover:bg-slate-700 transition-colors" onClick={() => setIsInstructionMinimized(!isInstructionMinimized)}>
+                                    <span className="font-bold text-sm flex items-center gap-2"><Icons.ClipboardList size={16} className="text-blue-300"/> ミッション指示書</span>
+                                    {isInstructionMinimized ? <Icons.ChevronUp size={18} /> : <Icons.ChevronDown size={18} />}
+                                  </div>
+                                  {!isInstructionMinimized && (
+                                    <div className="p-5 bg-yellow-50 text-slate-800 max-h-64 overflow-y-auto">
+                                      <div className="text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider border-b border-yellow-200 pb-1">Target Data</div>
+                                      <p className="whitespace-pre-line text-sm font-medium leading-relaxed font-mono">{TASKS[taskType].instruction}</p>
+                                      <p className="text-[10px] text-slate-400 mt-3 text-right">この通りに入力してください</p>
+                                    </div>
+                                  )}
+                                </div>
+                            </div>
+                        )}
+                    </main>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
 </html>
