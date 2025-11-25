@@ -21,7 +21,7 @@
 
     <style>
         body { font-family: 'Inter', sans-serif; }
-        .bad-ui-container * { font-family: "Times New Roman", Times, serif; }
+        .bad-ui-container * { font-family: "Times New Roman", "MS Mincho", "Hiragino Mincho ProN", serif; }
         .animate-fade-in { animation: fadeIn 0.5s ease-in; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .blinking-text { animation: blink 1s linear infinite; }
@@ -156,27 +156,27 @@
             };
 
             const handleEmailSubmit = () => {
-                if (!formData.email.includes('@')) { alert('System Error: Invalid format 0x0001'); onMistake(); return; }
-                if (formData.email !== 'taro.yamada@example.com') { alert('Verification Failed: Input does not match expected record.'); onMistake(); return; }
-                if (formData.email !== formData.emailConfirm) { alert('Error: Emails do not match.'); onMistake(); return; }
+                if (!formData.email.includes('@')) { alert('システムエラー: 無効なフォーマット 0x0001'); onMistake(); return; }
+                if (formData.email !== 'taro.yamada@example.com') { alert('検証失敗: 入力値が期待されるレコードと一致しません。'); onMistake(); return; }
+                if (formData.email !== formData.emailConfirm) { alert('エラー: 確認用メールアドレスが一致しません。'); onMistake(); return; }
                 onComplete();
             };
 
             const handlePasswordSubmit = () => {
                 if (formData.pass !== 'M3@zP7$q') {
                     setFormData(prev => ({ ...prev, pass: '', passConfirm: '' }));
-                    alert('PASSWORD REJECTED: Policy violation or incorrect string.');
+                    alert('パスワード拒否: ポリシー違反または不正な文字列です。');
                     onMistake();
                     return;
                 }
                 if (formData.pass !== formData.passConfirm) {
-                     alert('Confirmation Mismatch.');
+                     alert('確認不一致: パスワードが一致しません。');
                      setFormData(prev => ({ ...prev, passConfirm: '' }));
                      onMistake();
                      return;
                 }
                 if (!agreed) {
-                    alert('Error: You must accept the mandatory terms.');
+                    alert('エラー: 必須条件に同意する必要があります。');
                     onMistake();
                     return;
                 }
@@ -184,9 +184,9 @@
             };
 
             const handleProfileSubmit = () => {
-                if (!formData.name || !formData.addr || !formData.tel) { alert('NULL VALUE DETECTED.'); onMistake(); return; }
-                if (formData.tel.includes('-')) { alert('Format Error: Numbers only allowed in DB column.'); onMistake(); return; }
-                if (!formData.zip) { alert('Zip Code Missing'); onMistake(); return; }
+                if (!formData.name || !formData.addr || !formData.tel) { alert('NULL値が検出されました。'); onMistake(); return; }
+                if (formData.tel.includes('-')) { alert('形式エラー: DBカラムには数字のみ許可されています（ハイフン不可）。'); onMistake(); return; }
+                if (!formData.zip) { alert('郵便コード欠落'); onMistake(); return; }
                 onComplete();
             };
 
@@ -203,7 +203,7 @@
             };
 
             const fakeShowPassword = () => {
-                alert("SECURITY ALERT: displaying passwords on screen is dangerous and prohibited by IT policy.");
+                alert("セキュリティ警告: 画面上にパスワードを表示することは危険であり、ITポリシーにより禁止されています。");
                 onMistake();
             };
 
@@ -217,28 +217,28 @@
                         
                         {taskType === 'email' && (
                           <div className="border-2 border-black p-4 bg-white shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                            <p className="text-sm mb-2 font-bold uppercase decoration-double underline">Registration Wizard</p>
+                            <p className="text-sm mb-2 font-bold uppercase decoration-double underline">REGISTRATION WIZARD</p>
                             <div className="flex flex-col gap-4">
                                <div>
-                                    <label className="text-xs font-bold block mb-1">MAIL_ADDR_PRIMARY:</label>
+                                    <label className="text-xs font-bold block mb-1">第一メールアドレス（主）:</label>
                                     <input 
                                         type="text" 
                                         value={formData.email}
                                         onChange={(e) => handleChange('email', e.target.value)}
                                         className="border-2 border-blue-800 bg-blue-50 p-1 w-full text-sm"
-                                        placeholder="user(at)domain(dot)com"
+                                        placeholder="ユーザー名(at)ドメイン"
                                     />
                                </div>
                                <div>
-                                    <label className="text-xs font-bold block mb-1">CONFIRM_ADDR_PRIMARY:</label>
+                                    <label className="text-xs font-bold block mb-1">確認用アドレス（主）:</label>
                                     <input 
                                         type="text" 
                                         value={formData.emailConfirm}
                                         onChange={(e) => handleChange('emailConfirm', e.target.value)}
-                                        onPaste={(e) => { e.preventDefault(); alert('Paste disabled for security.'); }}
+                                        onPaste={(e) => { e.preventDefault(); alert('セキュリティのため貼り付けは無効化されています。'); }}
                                         className="border-2 border-red-800 bg-red-50 p-1 w-full text-sm"
                                     />
-                                    <span className="text-[10px] text-red-600">* Do not copy-paste.</span>
+                                    <span className="text-[10px] text-red-600">※ コピー＆ペースト厳禁</span>
                                </div>
                             </div>
                           </div>
@@ -249,7 +249,7 @@
                             <p className="text-xs mb-4 text-center font-mono text-red-600 blinking-text">!! SECURE AREA !!</p>
                             <div className="flex flex-col gap-4">
                                <div className="relative">
-                                   <label className="text-sm font-bold text-gray-500">SecretString:</label>
+                                   <label className="text-sm font-bold text-gray-500">秘密文字列（パスワード）:</label>
                                    <div className="flex gap-1">
                                         <input 
                                             type="password"
@@ -258,15 +258,15 @@
                                             className="bg-gray-600 text-gray-800 font-mono p-1 w-full border border-gray-700"
                                             autoComplete="new-password"
                                         />
-                                        <button onClick={fakeShowPassword} className="bg-gray-300 border border-gray-500 p-1" title="Show Password">
+                                        <button onClick={fakeShowPassword} className="bg-gray-300 border border-gray-500 p-1" title="パスワードを表示">
                                             <Icons.Eye size={16} className="text-gray-500" />
                                         </button>
                                    </div>
-                                   <p className="text-[9px] text-gray-400 mt-1">Case sensitive. Alphanumeric. Symbols required.</p>
+                                   <p className="text-[9px] text-gray-400 mt-1">大文字小文字区別。英数字記号必須。</p>
                                </div>
 
                                <div>
-                                   <label className="text-sm font-bold text-gray-500">VerifyString:</label>
+                                   <label className="text-sm font-bold text-gray-500">検証用文字列:</label>
                                    <input 
                                         type="password"
                                         value={formData.passConfirm}
@@ -279,7 +279,7 @@
                                   <div className="flex items-start gap-2">
                                       <input type="checkbox" className="mt-1" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
                                       <span className="text-[10px] leading-tight font-bold">
-                                        REQUIRED: I agree to receive marketing emails, third-party offers, and daily newsletters. Unchecking this will cancel registration.
+                                        必須: マーケティングメール、第三者からの提案、日刊ニュースレターの受信に同意します。チェックを外すと登録はキャンセルされます。
                                       </span>
                                   </div>
                                </div>
@@ -291,23 +291,23 @@
                           <div className="space-y-6 font-mono text-sm">
                              <div className="bg-white border border-black p-2">
                                  <div className="flex flex-col mb-4">
-                                    <label className="text-xs mb-1">CLIENT_ID_NAME (LAST FIRST):</label>
+                                    <label className="text-xs mb-1">顧客識別名（姓 名）:</label>
                                     <input type="text" value={formData.name} onChange={(e) => handleChange('name', e.target.value)} className="border-b-2 border-black bg-gray-100 outline-none px-1" />
                                  </div>
 
                                  <div className="flex flex-wrap gap-2 mb-4">
                                     <div className="w-1/3">
-                                        <label className="text-[10px]">ZIP:</label>
+                                        <label className="text-[10px]">郵便地域コード:</label>
                                         <input type="text" value={formData.zip} onChange={(e) => handleChange('zip', e.target.value)} className="w-full border border-black" />
                                     </div>
                                     <div className="w-full">
-                                        <label className="text-[10px]">MUNICIPALITY_STREET_APT:</label>
+                                        <label className="text-[10px]">自治体・通り・建物:</label>
                                         <input type="text" value={formData.addr} onChange={(e) => handleChange('addr', e.target.value)} className="w-full border border-black" />
                                     </div>
                                  </div>
 
                                  <div className="flex items-center gap-2 border-t border-black pt-2">
-                                    <label className="text-xs">CONTACT_DIGITS:</label>
+                                    <label className="text-xs">連絡用数字列:</label>
                                     <input type="text" value={formData.tel} onChange={(e) => handleChange('tel', e.target.value)} className="bg-yellow-50 border border-yellow-500 p-1 flex-grow" placeholder="09012345678" />
                                  </div>
                              </div>
@@ -316,7 +316,7 @@
 
                         <div className="flex justify-between items-center mt-8 bg-gray-300 p-4 rounded border-t-4 border-gray-500">
                           <button onClick={handleSubmit} className="bg-gray-500 text-gray-200 px-4 py-1 text-xs hover:bg-gray-600 border border-gray-600 shadow-inner">
-                            Execute Submit
+                            EXECUTE SUBMIT
                           </button>
                           <button onClick={handleReset} className="bg-blue-600 text-white px-8 py-3 text-lg font-bold hover:bg-blue-700 border-4 border-blue-800 shadow-lg rounded">
                             CLEAR FORM
@@ -324,7 +324,7 @@
                         </div>
                         
                         <div className="text-center text-[10px] text-red-600 font-bold animate-pulse">
-                           {taskType === 'password' ? 'CAPS LOCK IS OFF (MAYBE)' : 'SYSTEM READY'}
+                           {taskType === 'password' ? '警告: Caps Lockを無効化してください' : 'SYSTEM READY'}
                         </div>
                     </div>
                 </div>
